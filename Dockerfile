@@ -2,23 +2,31 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Git is required
+# Install git (needed for submodules)
 RUN apk add --no-cache git bash
 
-# Force HTTPS for all GitHub repos
+# Force HTTPS for all GitHub repositories
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-# Clone without recursive submodules
-RUN git clone --depth=1 https://github.com/JariPie/mcp-sap-docs.git . \
- && git submodule update --init --depth=1 \
+# Copy repository contents
+COPY . .
+
+# Initialize submodules manually (no SSH)
+RUN git submodule update --init --depth=1 \
  && cd sources/wdi5 \
  && git submodule update --init --depth=1
 
+# Install dependencies
 RUN npm ci
+
+# Prepare docs + build
 RUN ./setup.sh
 RUN npm run build
 
+ENV PORT=3122
+ENV MCP_PORT=3122
+ENV NODE_ENV=production
+
 EXPOSE 3122
-ENV PORT=3122 MCP_PORT=3122 NODE_ENV=production
 
 CMD ["npm", "run", "start:streamable"]
